@@ -4,7 +4,7 @@
 
 A widget that makes another one pinch zoom, and return to its initial size and position when released.
 
-PinchToZoomScrollableWidget is based on a fork of InteractiveViewer because the standard widget loses to ScrollView in GestureArena.
+PinchToZoomScrollableWidget is based on a fork of InteractiveViewer because the standard widget loses to ScrollView on GestureArena.
 
 Also, the widget can preserve its state by transitioning to the Overlay and back.
 
@@ -35,7 +35,7 @@ Now you can use `PinchToZoomScrollableWidget` as a widget in your code.
 
 | props         |   types    |                                 description                                  |
 |:--------------|:----------:|:----------------------------------------------------------------------------:|
-| child         |  `Widget`  |                              Widget for zooming                              |
+| child         |  `Widget`  |                              Widget for zooming.                              |
 | resetDuration | `Duration` | The duration of the reset animation. Default is Duration(milliseconds: 200). |
 | resetCurve    |  `Curve`   |          The curve of the reset animation. Default is Curves.ease.           |
 | clipBehavior  |   `Clip`   |        Clipping behavior for InteractiveViewer. Default is Clip.none.        |
