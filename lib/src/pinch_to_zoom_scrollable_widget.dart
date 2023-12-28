@@ -13,16 +13,16 @@ class PinchToZoomScrollableWidget extends StatefulWidget {
   /// it is just a customization over an interactive viewer fork
   ///
   /// * [child] is the widget used for zooming.
-  /// This parameter is required because without a child there is nothing to zoom on
-  const PinchToZoomScrollableWidget(
-      {required this.child,
-      this.resetDuration = defaultResetDuration,
-      this.resetCurve = Curves.ease,
-      this.clipBehavior = Clip.none,
-      this.maxScale = 8,
-      this.overlayColor = defaultColorOverlay,
-      this.saveState = false,
-      super.key})
+  /// This parameter is required
+  /// because without a child there is nothing to zoom on
+  const PinchToZoomScrollableWidget({required this.child,
+    this.resetDuration = defaultResetDuration,
+    this.resetCurve = Curves.ease,
+    this.clipBehavior = Clip.none,
+    this.maxScale = 8,
+    this.overlayColor = defaultColorOverlay,
+    this.saveState = false,
+    super.key})
       : assert(maxScale > 0);
 
   /// Widget for zooming
@@ -38,12 +38,7 @@ class PinchToZoomScrollableWidget extends StatefulWidget {
   final Clip clipBehavior;
 
   /// The maximum allowed scale.
-  ///
-  /// The scale will be clamped between this and [minScale] inclusively.
-  ///
   /// Defaults to 8.
-  ///
-  /// Cannot be null, and must be greater than zero and greater than minScale.
   final double maxScale;
 
   /// The duration of the reset animation
@@ -68,7 +63,8 @@ class PinchToZoomScrollableWidget extends StatefulWidget {
 
 /// State of PinchToZoomScrollableWidget
 class _PinchToZoomScrollableWidgetState
-    extends State<PinchToZoomScrollableWidget> with TickerProviderStateMixin {
+    extends State<PinchToZoomScrollableWidget>
+    with TickerProviderStateMixin {
   /// A thin wrapper on [ValueNotifier] whose value is a [Matrix4]
   /// representing a transformation of [InsistentInteractiveViewer].
   late final _controller = InsistentTransformationController();
@@ -77,30 +73,19 @@ class _PinchToZoomScrollableWidgetState
   AnimationController? _animationController;
 
   /// Reset animation
+  // ignore: use_late_for_private_fields_and_variables
   Animation<Matrix4>? _animation;
 
   /// OverlayEntry for pinched [PinchToZoomScrollableWidget.child]
   OverlayEntry? entry;
 
-  /// TODO
   List<OverlayEntry> overlayEntries = [];
 
-  /// TODO
-  double pinchScale = 1;
-
-  /// TODO
-  double scale = 1;
-
-  /// TODO
-  GlobalKey key = GlobalKey();
-
-  /// TODO
-  //late Widget usualWidget;
+  final GlobalKey _key = GlobalKey();
 
   @override
   void initState() {
     super.initState();
-    //usualWidget = buildWidget(zoomableWidget: widget.child);
     _initAnimationController();
   }
 
@@ -119,13 +104,12 @@ class _PinchToZoomScrollableWidgetState
       duration: widget.resetDuration,
     )
       ..addListener(
-        () {
+            () {
           _controller.value = _animation!.value;
-          scale = pinchScale * (1.0 - _animationController!.value);
         },
       )
       ..addStatusListener(
-        (status) {
+            (status) {
           if (status == AnimationStatus.completed) {
             Future.delayed(const Duration(milliseconds: 100), removeOverlay);
           }
@@ -156,12 +140,13 @@ class _PinchToZoomScrollableWidgetState
   void resetAnimation() {
     _animation = Matrix4Tween(begin: _controller.value, end: Matrix4.identity())
         .animate(CurvedAnimation(
-            parent: _animationController!, curve: widget.resetCurve));
+        parent: _animationController!, curve: widget.resetCurve));
     _animationController!.forward(from: 0);
   }
 
-  Widget buildWidget({required Widget zoomableWidget}) => Builder(
-        key: widget.saveState ? key : null,
+  Widget buildWidget({required Widget zoomableWidget}) =>
+      Builder(
+        key: widget.saveState ? _key : null,
         builder: (context) {
           if (widget.saveState) {
             Overlay.of(context);
@@ -171,28 +156,8 @@ class _PinchToZoomScrollableWidgetState
             clipBehavior: widget.clipBehavior,
             maxScale: widget.maxScale,
             transformationController: _controller,
-            onInteractionStart: (details) {
-              // avoided start with ScaleStartDetails.pointerCount fingers
-              if (details.pointerCount != 2) {
-                return;
-              }
-              _animationController!.stop();
-              if (entry == null) {
-                showOverlay(context);
-              }
-            },
-            onInteractionEnd: (details) {
-              if (overlayEntries.isEmpty) {
-                return;
-              }
-              resetAnimation();
-            },
-            onInteractionUpdate: (details) {
-              if (details.pointerCount > 1) {
-                pinchScale = details.scale;
-                scale = details.scale;
-              }
-            },
+            onInteractionStart: _onInteractionStart,
+            onInteractionEnd: _onInteractionEnd,
             panEnabled: false,
             scaleEnabled: true,
             boundaryMargin: const EdgeInsets.all(double.infinity),
@@ -201,43 +166,64 @@ class _PinchToZoomScrollableWidgetState
         },
       );
 
-  final events = [];
+  void _onInteractionStart(ScaleStartDetails details) {
+    // avoided start with ScaleStartDetails.pointerCount fingers
+    if (details.pointerCount != 2) {
+      return;
+    }
+    _animationController!.stop();
+    if (entry == null) {
+      _showOverlay(context);
+    }
+  }
 
-  void showOverlay(BuildContext context) {
+  void _onInteractionEnd(ScaleEndDetails details) {
+    if (overlayEntries.isEmpty) {
+      return;
+    }
+    resetAnimation();
+  }
+
+  void _showOverlay(BuildContext context) {
     final OverlayState overlay = Overlay.of(context);
     final RenderBox renderBox = context.findRenderObject()! as RenderBox;
     final Offset offset = renderBox.localToGlobal(Offset.zero);
-
     final Widget zoomWidget = buildWidget(zoomableWidget: widget.child);
 
     entry = OverlayEntry(
-        builder: (context) => Material(
-              color: Colors.green.withOpacity(0),
-              child: Stack(
-                children: [
-                  Positioned.fill(
-                    child: Container(color: widget.overlayColor),
-                  ),
-                  Positioned(
-                    left: offset.dx,
-                    top: offset.dy,
-                    child: SizedBox(
-                      width: renderBox.size.width,
-                      height: renderBox.size.height,
-                      child: zoomWidget,
-                    ),
-                  ),
-                ],
-              ),
-            ));
+        builder: (context) =>
+            _buildOverlayBody(context, renderBox, offset, zoomWidget));
 
     setState(() {});
     Future(() {
       overlay.insert(entry!);
-      // We need to control all the overlays added to avoid problems in scrolling,
+      // We need to control all the overlays added
+      // to avoid problems in scaling,
       overlayEntries.add(entry!);
     });
   }
+
+  Widget _buildOverlayBody(BuildContext context, RenderBox renderBox,
+      Offset offset, Widget zoomWidget) =>
+      Material(
+        color: Colors.green.withOpacity(0),
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: Container(color: widget.overlayColor),
+            ),
+            Positioned(
+              left: offset.dx,
+              top: offset.dy,
+              child: SizedBox(
+                width: renderBox.size.width,
+                height: renderBox.size.height,
+                child: zoomWidget,
+              ),
+            ),
+          ],
+        ),
+      );
 
   void removeOverlay() {
     for (final entry in overlayEntries) {
