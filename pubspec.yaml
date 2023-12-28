@@ -1,0 +1,27 @@
+name: pinch_to_zoom_scrollable
+description: A widget based on fork of Interactive Viewer (pinch wins over ScrollView in GestureArena) that makes picture pinch zoom, and return to its initial size and position when released.
+version: 0.1.1
+homepage: https://github.com/rododendron88/pinch_to_zoom_scrollable
+platforms:
+  android:
+  ios:
+  linux:
+  macos:
+  web:
+  windows:
+
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+  flutter: ">=1.17.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: 2.0.1
+
+flutter:
+
