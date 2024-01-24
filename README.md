@@ -35,12 +35,14 @@ Now you can use `PinchToZoomScrollableWidget` as a widget in your code.
 
 | props         |   types    |                                 description                                  |
 |:--------------|:----------:|:----------------------------------------------------------------------------:|
-| child         |  `Widget`  |                              Widget for zooming.                              |
+| child         |  `Widget`  |           Child Widget and used for zooming if zoomChild is null.            |
+| zoomChild     |  `Widget`  |                             Widget for zooming.                              |
 | resetDuration | `Duration` | The duration of the reset animation. Default is Duration(milliseconds: 200). |
 | resetCurve    |  `Curve`   |          The curve of the reset animation. Default is Curves.ease.           |
 | clipBehavior  |   `Clip`   |        Clipping behavior for InteractiveViewer. Default is Clip.none.        |
 | maxScale      |  `double`  |                   The maximum allowed scale. Default to 8.                   |
 | overlayColor  |  `Color`   |           Overlay background color. Default is Color(0x42000000).            |
 | saveState     |   `bool`   |        Use [GlobalKey] for saving state of [child]. Default is False.        |
+| rootOverlay   |   `bool`   |         Overlay.of(context) will use rootOverlay. Default is False.          |
 
 Feel free to fork this repository and send pull request 🏁👍

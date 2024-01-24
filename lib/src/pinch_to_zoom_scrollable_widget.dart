@@ -15,18 +15,24 @@ class PinchToZoomScrollableWidget extends StatefulWidget {
   /// * [child] is the widget used for zooming.
   /// This parameter is required
   /// because without a child there is nothing to zoom on
-  const PinchToZoomScrollableWidget({required this.child,
+  const PinchToZoomScrollableWidget({
+    required this.child,
+    this.zoomChild,
     this.resetDuration = defaultResetDuration,
     this.resetCurve = Curves.ease,
     this.clipBehavior = Clip.none,
     this.maxScale = 8,
     this.overlayColor = defaultColorOverlay,
     this.saveState = false,
-    super.key})
-      : assert(maxScale > 0);
+    this.rootOverlay = false,
+    super.key,
+  }) : assert(maxScale > 0);
 
   /// Widget for zooming
   final Widget child;
+
+  /// Widget for zooming
+  final Widget? zoomChild;
 
   /// If set to [Clip.none], the child may extend beyond
   /// the size of the InteractiveViewer,
@@ -56,6 +62,11 @@ class PinchToZoomScrollableWidget extends StatefulWidget {
   /// of the [PinchToZoomScrollableWidget.child] (ex for VideoPlayer).
   final bool saveState;
 
+  /// If `rootOverlay` is set to true, the state from the furthest instance of
+  /// this class is given instead. Useful for installing overlay entries above
+  /// all subsequent instances of [Overlay].
+  final bool rootOverlay;
+
   @override
   State<PinchToZoomScrollableWidget> createState() =>
       _PinchToZoomScrollableWidgetState();
@@ -63,8 +74,7 @@ class PinchToZoomScrollableWidget extends StatefulWidget {
 
 /// State of PinchToZoomScrollableWidget
 class _PinchToZoomScrollableWidgetState
-    extends State<PinchToZoomScrollableWidget>
-    with TickerProviderStateMixin {
+    extends State<PinchToZoomScrollableWidget> with TickerProviderStateMixin {
   /// A thin wrapper on [ValueNotifier] whose value is a [Matrix4]
   /// representing a transformation of [InsistentInteractiveViewer].
   late final _controller = InsistentTransformationController();
@@ -93,6 +103,10 @@ class _PinchToZoomScrollableWidgetState
   void didUpdateWidget(covariant PinchToZoomScrollableWidget oldWidget) {
     if (oldWidget.resetDuration != widget.resetDuration) {
       _initAnimationController();
+    } else if (oldWidget.zoomChild != widget.zoomChild && entry != null) {
+      // zoomWidget have changed while it was displayed
+      removeOverlay();
+      _showOverlay(context);
     }
     super.didUpdateWidget(oldWidget);
   }
@@ -104,14 +118,14 @@ class _PinchToZoomScrollableWidgetState
       duration: widget.resetDuration,
     )
       ..addListener(
-            () {
+        () {
           _controller.value = _animation!.value;
         },
       )
       ..addStatusListener(
-            (status) {
+        (status) {
           if (status == AnimationStatus.completed) {
-            Future.delayed(const Duration(milliseconds: 100), removeOverlay);
+            removeOverlay();
           }
         },
       );
@@ -128,42 +142,40 @@ class _PinchToZoomScrollableWidgetState
   @override
   Widget build(BuildContext context) {
     if (widget.saveState) {
-      Overlay.of(context);
       return entry == null
-          ? buildWidget(zoomableWidget: widget.child)
+          ? buildWidget(child: widget.child)
           : const SizedBox();
     } else {
-      return buildWidget(zoomableWidget: widget.child);
+      return buildWidget(child: widget.child);
     }
   }
 
   void resetAnimation() {
-    _animation = Matrix4Tween(begin: _controller.value, end: Matrix4.identity())
-        .animate(CurvedAnimation(
-        parent: _animationController!, curve: widget.resetCurve));
+    _animation = Matrix4Tween(
+      begin: _controller.value,
+      end: Matrix4.identity(),
+    ).animate(
+      CurvedAnimation(
+        parent: _animationController!,
+        curve: widget.resetCurve,
+      ),
+    );
     _animationController!.forward(from: 0);
   }
 
-  Widget buildWidget({required Widget zoomableWidget}) =>
-      Builder(
+  Widget buildWidget({required Widget child}) => Builder(
         key: widget.saveState ? _key : null,
-        builder: (context) {
-          if (widget.saveState) {
-            Overlay.of(context);
-          }
-
-          return InsistentInteractiveViewer(
-            clipBehavior: widget.clipBehavior,
-            maxScale: widget.maxScale,
-            transformationController: _controller,
-            onInteractionStart: _onInteractionStart,
-            onInteractionEnd: _onInteractionEnd,
-            panEnabled: false,
-            scaleEnabled: true,
-            boundaryMargin: const EdgeInsets.all(double.infinity),
-            child: zoomableWidget,
-          );
-        },
+        builder: (context) => InsistentInteractiveViewer(
+          clipBehavior: widget.clipBehavior,
+          maxScale: widget.maxScale,
+          transformationController: _controller,
+          onInteractionStart: _onInteractionStart,
+          onInteractionEnd: _onInteractionEnd,
+          panEnabled: false,
+          scaleEnabled: true,
+          boundaryMargin: const EdgeInsets.all(double.infinity),
+          child: child,
+        ),
       );
 
   void _onInteractionStart(ScaleStartDetails details) {
@@ -185,14 +197,24 @@ class _PinchToZoomScrollableWidgetState
   }
 
   void _showOverlay(BuildContext context) {
-    final OverlayState overlay = Overlay.of(context);
+    final OverlayState overlay = Overlay.of(
+      context,
+      rootOverlay: widget.rootOverlay,
+    );
     final RenderBox renderBox = context.findRenderObject()! as RenderBox;
     final Offset offset = renderBox.localToGlobal(Offset.zero);
-    final Widget zoomWidget = buildWidget(zoomableWidget: widget.child);
+    final Widget child = buildWidget(
+      child: widget.zoomChild ?? widget.child,
+    );
 
     entry = OverlayEntry(
-        builder: (context) =>
-            _buildOverlayBody(context, renderBox, offset, zoomWidget));
+      builder: (context) => _buildOverlayBody(
+        context,
+        renderBox,
+        offset,
+        child,
+      ),
+    );
 
     setState(() {});
     Future(() {
@@ -203,14 +225,18 @@ class _PinchToZoomScrollableWidgetState
     });
   }
 
-  Widget _buildOverlayBody(BuildContext context, RenderBox renderBox,
-      Offset offset, Widget zoomWidget) =>
+  Widget _buildOverlayBody(
+    BuildContext context,
+    RenderBox renderBox,
+    Offset offset,
+    Widget child,
+  ) =>
       Material(
-        color: Colors.green.withOpacity(0),
+        color: Colors.transparent,
         child: Stack(
-          children: [
+          children: <Widget>[
             Positioned.fill(
-              child: Container(color: widget.overlayColor),
+              child: ColoredBox(color: widget.overlayColor),
             ),
             Positioned(
               left: offset.dx,
@@ -218,7 +244,7 @@ class _PinchToZoomScrollableWidgetState
               child: SizedBox(
                 width: renderBox.size.width,
                 height: renderBox.size.height,
-                child: zoomWidget,
+                child: child,
               ),
             ),
           ],
@@ -226,8 +252,10 @@ class _PinchToZoomScrollableWidgetState
       );
 
   void removeOverlay() {
-    for (final entry in overlayEntries) {
-      entry.remove();
+    for (final OverlayEntry entry in overlayEntries) {
+      entry
+        ..remove()
+        ..dispose();
     }
     overlayEntries.clear();
     entry = null;
