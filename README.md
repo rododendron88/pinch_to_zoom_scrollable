@@ -34,6 +34,7 @@ Now you can use `PinchToZoomScrollableWidget` as a widget in your code.
 #### PinchToZoomScrollableWidget Props
 
 | props | types | description |
+|:--------------|:----------:|:----------------------------------------------------------------------------:|
 | child |  `Widget`  | Child Widget. If [zoomChild] is null, child widget is used for zooming. |
 | zoomChild |  `Widget?`  | Widget for zooming. |
 | resetDuration | `Duration` | The duration of the reset animation. Default is Duration(milliseconds: 200). |
