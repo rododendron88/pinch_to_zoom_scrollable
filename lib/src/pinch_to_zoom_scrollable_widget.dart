@@ -202,7 +202,10 @@ class _PinchToZoomScrollableWidgetState
       rootOverlay: widget.rootOverlay,
     );
     final RenderBox renderBox = context.findRenderObject()! as RenderBox;
-    final Offset offset = renderBox.localToGlobal(Offset.zero);
+    final Offset offset = renderBox.localToGlobal(
+      Offset.zero,
+      ancestor: overlay.context.findRenderObject(),
+    );
     final Widget child = buildWidget(
       child: widget.zoomChild ?? widget.child,
     );
